@@ -10,10 +10,15 @@ GoldenRetriever sits between your AI agents and the third-party accounts they ne
 
 ```bash
 pip install -r requirements.txt
+npm --prefix ui install
 
-python main.py          # dashboard :5001 · agent API :5002
-python main.py --mcp    # stdio MCP server for Claude Code
-npm --prefix ui install && npm --prefix ui run dev   # frontend dev server
+python main.py                        # dashboard :5001 · agent API :5002
+npm --prefix ui run dev               # frontend dev server
+
+python simulate_agent.py              # full approval loop smoke test
+python simulate_agent.py --mode sdk   # same test via Python SDK
+python simulate_agent.py --mode mcp   # same test via MCP tool calls
+python main.py --mcp                  # stdio MCP server for Claude Code
 ```
 
 ---
@@ -37,7 +42,7 @@ npm --prefix ui install && npm --prefix ui run dev   # frontend dev server
 | 13 | Audit log — append-only `audit_log` table, event constants, wired to all lifecycle points, live UI feed | ✅ |
 | 14 | OAuth + headless auth — Google/GitHub OAuth flow, Playwright session login, per-service adapters, hint wired into approve | ✅ |
 | 15 | Session lifecycle — session bind, `GET /agent/hint/<id>` one-time fetch, real `get_session()`, UI Sessions tab, auto-expiry, `POST /agent/action` scope enforcement | ✅ |
-| 16 | Demo polish | 🔜 |
+| 16 | Demo polish — `simulate_agent.py` final (http/sdk/mcp modes), `DEMO.md`, README final | ✅ |
 
 ---
 
@@ -185,18 +190,40 @@ All routes on `:5001`. Agent API lives on `:5002`.
 
 ## Demo Arc (90 seconds)
 
-```
-A: python main.py               # backend :5001/:5002
-B: npm --prefix ui run dev      # UI
-C: python simulate_agent.py     # agent smoke test (waits for admin to approve)
+See [`DEMO.md`](DEMO.md) for the full script with talking points.
 
-1. simulate_agent.py submits Amazon "compare prices" → scope=[search,read], NO purchase
-2. Pending card appears live in the UI (Pending tab)
-3. Admin clicks Approve → Sessions tab shows new live session with scope + TTL countdown
-4. simulate_agent.py receives scoped JWT; fetches one-time hint → hint consumed (410 on replay)
-5. In-scope: search → 200 OK  |  Out-of-scope: purchase → 403 + SCOPE_DENIED in audit feed
-6. Admin clicks "End Session" → red banner in Sessions tab, SESSION_ENDED in audit
-7. Subsequent token poll → 410 EXPIRED ✓
+```bash
+# Terminal A — backend (dashboard :5001 + agent API :5002)
+python main.py
+
+# Terminal B — frontend
+npm --prefix ui run dev
+
+# Terminal C — agent smoke test (choose a mode)
+python simulate_agent.py              # raw HTTP (default)
+python simulate_agent.py --mode sdk   # Python SDK
+python simulate_agent.py --mode mcp   # MCP tool calls (Claude CLI simulation)
+```
+
+```
+Act 1  simulate_agent.py submits Amazon "compare prices"
+         → policy derives scope=[search,read], NO purchase
+         → pending card appears in UI via SocketIO
+
+Act 2  Admin clicks Approve
+         → Sessions tab shows live session with scope badges + TTL countdown
+         → agent receives Ed25519-signed JWT
+
+Act 3  In-scope: search → 200 OK · read → 200 OK
+
+Act 4  Out-of-scope: purchase → 403 + SCOPE_DENIED in audit feed
+                     delete   → 403 + SCOPE_DENIED in audit feed
+
+Act 5  Admin clicks "End Session"
+         → SESSION_ENDED in audit · subsequent poll → 410 EXPIRED ✓
+
+Act 6  Audit tab: SUBMITTED → SCOPE_DERIVED → APPROVED → TOKEN_ISSUED
+                → SCOPE_CHECK → SCOPE_DENIED → SESSION_ENDED
 ```
 
 ---

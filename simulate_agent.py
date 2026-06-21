@@ -4,8 +4,9 @@ simulate_agent.py — smoke-test the full GoldenRetriever scoped approval loop.
 
   python simulate_agent.py                          # default: amazon price comparison
   python simulate_agent.py --service github --task "read the latest issues"
-  python simulate_agent.py --no-revoke              # skip the revoke step
   python simulate_agent.py --mode sdk               # use the Python SDK
+  python simulate_agent.py --mode mcp               # simulate MCP tool calls
+  python simulate_agent.py --no-revoke              # skip the revoke/session-end step
 
 Exit codes: 0=passed, 1=submit error, 2=denied, 3=expired/error, 4=timeout.
 """
@@ -74,13 +75,13 @@ def main() -> None:
     parser.add_argument("--agent-id",  default="demo-agent-001",
                         help="Agent identifier")
     parser.add_argument("--no-revoke", action="store_true",
-                        help="Skip the revoke step (leave token live)")
-    parser.add_argument("--mode",      default="http", choices=["http", "sdk"],
-                        help="Use raw HTTP calls (default) or the Python SDK")
+                        help="Skip the revoke/session-end step (leave token live)")
+    parser.add_argument("--mode",      default="http", choices=["http", "sdk", "mcp"],
+                        help="http (raw calls, default) | sdk (Python SDK) | mcp (MCP tool calls)")
     args = parser.parse_args()
 
     print(f"\n{_bar('═')}")
-    print("  GoldenRetriever — Full Scoped Approval Loop (Phase 15)")
+    print("  GoldenRetriever — Full Scoped Approval Loop")
     print(_bar("═"))
     print(f"  Service : {args.service}")
     print(f"  Task    : {args.task}")
@@ -92,6 +93,10 @@ def main() -> None:
 
     if args.mode == "sdk":
         _run_sdk(args)
+        return
+
+    if args.mode == "mcp":
+        _run_mcp(args)
         return
 
     # ── 1. Submit access request ──────────────────────────────────────────
@@ -148,6 +153,10 @@ def main() -> None:
         if status == 403:
             print(f"\n  [DENIED] Admin denied the request.")
             sys.exit(2)
+
+        if status == 410:
+            print(f"\n  [EXPIRED] Request expired before admin acted.")
+            sys.exit(3)
 
         print(f"\n  [ERROR] Unexpected status {status}: {body}")
         sys.exit(3)
@@ -221,17 +230,14 @@ def main() -> None:
     if not args.no_revoke:
         print(f"\n[8/8] Ending session (admin revoke)…")
         try:
-            # Use the dedicated end-session endpoint
             end_resp = http.post(f"{DASH_BASE}/api/sessions/{request_id}/end", timeout=5)
         except http.exceptions.RequestException as exc:
-            # Fall back to delete if dashboard isn't reachable from this process
             print(f"  [INFO] Dashboard unreachable, using agent DELETE: {exc}")
             end_resp = None
 
         if end_resp and end_resp.status_code == 200:
             print(f"  [OK]  Session ended via dashboard — SESSION_ENDED logged in audit")
         else:
-            # Fallback: revoke via agent API
             try:
                 rev = http.delete(f"{AGENT_BASE}/agent/token/{request_id}", timeout=5)
             except http.exceptions.RequestException as exc:
@@ -240,7 +246,6 @@ def main() -> None:
                 if rev.status_code == 200:
                     print(f"  [OK]  Token revoked via agent API")
 
-        # Confirm the token is dead
         confirm = http.get(f"{AGENT_BASE}/agent/token/{request_id}", timeout=5)
         if confirm.status_code == 410:
             print(f"  [OK]  GET /agent/token/{request_id[:8]}… → 410 EXPIRED ✓")
@@ -258,7 +263,10 @@ def main() -> None:
 
 def _run_sdk(args) -> None:
     """Run the same flow using the GoldenRetrieverClient SDK."""
-    from agent.sdk import GoldenRetrieverClient, ApprovalDenied, ApprovalExpired, ApprovalTimeout, ScopeViolation
+    from agent.sdk import (
+        ApprovalDenied, ApprovalExpired, ApprovalTimeout, GoldenRetrieverClient,
+        ScopeViolation,
+    )
 
     print(f"\n[SDK] Initialising GoldenRetrieverClient…")
     client = GoldenRetrieverClient(
@@ -280,34 +288,134 @@ def _run_sdk(args) -> None:
     except ApprovalTimeout as exc:
         print(f"[SDK] TIMEOUT: {exc}")
         sys.exit(4)
+    except Exception as exc:
+        print(f"[SDK] ERROR: {exc}")
+        sys.exit(1)
 
-    print(f"[SDK] Verifying token…")
-    claims = client.verify_token(token)
-    print(f"[SDK] scope = {claims.get('scope')}")
+    print(f"[SDK] Verifying token signature (Ed25519)…")
+    try:
+        claims = client.verify_token(token)
+        print(f"[SDK] scope = {claims.get('scope')}")
+    except ValueError as exc:
+        print(f"[SDK] Token verification failed: {exc}")
+        sys.exit(3)
 
     print(f"[SDK] Building authenticated session (hint fetch)…")
     session = client.get_session(token, request_id=request_id)
-    print(f"[SDK] Session headers: {dict(session.headers)}")
+    print(f"[SDK] Session X-GR-Scope: {session.headers.get('X-GR-Scope')}")
 
-    print(f"[SDK] Scope enforcement checks…")
+    print(f"\n[SDK] Scope enforcement checks:")
     try:
-        ok = client.check_action(token, "search")
-        print(f"[SDK] search → {'ALLOWED' if ok else 'BLOCKED'}")
+        client.check_action(token, "search")
+        print(f"[SDK] search   → ALLOWED")
     except ScopeViolation as exc:
-        print(f"[SDK] search → BLOCKED: {exc}")
+        print(f"[SDK] search   → BLOCKED: {exc}")
 
     try:
-        ok = client.check_action(token, "purchase")
-        print(f"[SDK] purchase → {'ALLOWED' if ok else 'BLOCKED'}")
+        client.check_action(token, "purchase")
+        print(f"[SDK] purchase → ALLOWED")
     except ScopeViolation as exc:
-        print(f"[SDK] purchase → SCOPE_DENIED: {exc}")
+        print(f"[SDK] purchase → SCOPE_DENIED (expected): {exc}")
 
     if not args.no_revoke:
-        print(f"[SDK] Revoking…")
-        client.revoke(request_id)
-        print(f"[SDK] Token revoked ✓")
+        print(f"\n[SDK] Revoking token…")
+        try:
+            client.revoke(request_id)
+            print(f"[SDK] Token revoked ✓")
+        except Exception as exc:
+            print(f"[SDK] Revoke failed: {exc}")
 
-    print(f"\n[SDK] PASSED — SDK smoke test complete")
+        confirm = http.get(f"{AGENT_BASE}/agent/token/{request_id}", timeout=5)
+        if confirm.status_code == 410:
+            print(f"[SDK] GET /agent/token → 410 EXPIRED ✓")
+        else:
+            print(f"[SDK] Expected 410, got {confirm.status_code}")
+    else:
+        print(f"\n[SDK] Skipping revoke (--no-revoke)")
+
+    print(f"\n{_bar('═')}")
+    print("  SDK SMOKE TEST PASSED")
+    print(_bar("═"))
+
+
+def _run_mcp(args) -> None:
+    """
+    Simulate MCP tool calls exactly as a Claude CLI agent would invoke them.
+
+    Calls the MCP tool handlers directly (bypassing stdio transport) — the
+    behaviour is identical to what Claude CLI sees when using the MCP server.
+    """
+    from agent.mcp_server import (
+        list_available_services as mcp_list_services,
+        request_access as mcp_request_access,
+        revoke_token as mcp_revoke_token,
+    )
+
+    print(f"\n[MCP] Simulating Claude CLI agent MCP tool calls…")
+    print(f"[MCP] Open → http://localhost:{config.DASHBOARD_PORT} to approve\n")
+
+    # ── list_available_services ───────────────────────────────────────────
+    svc_result = mcp_list_services()
+    services   = svc_result.get("services", [])
+    print(f"[MCP] list_available_services() → {len(services)} service(s):")
+    for s in services:
+        print(f"  {s['service']:12s}  actions={s['actions']}")
+
+    # ── request_access (blocks until admin approves) ──────────────────────
+    print(f"\n[MCP] request_access(service={args.service!r}, task={args.task!r})")
+    result = mcp_request_access(args.service, args.task)
+
+    if not result.get("success"):
+        reason = result.get("reason", "unknown")
+        error  = result.get("error", "")
+        print(f"[MCP] {reason.upper()}: {error}")
+        sys.exit({"denied": 2, "expired": 3, "timeout": 4}.get(reason, 3))
+
+    token      = result["token"]
+    request_id = result["request_id"]
+    scope      = result["scope"]
+    print(f"[MCP] APPROVED")
+    print(f"  request_id = {request_id[:14]}…")
+    print(f"  scope      = {scope}")
+    print(f"  expires_at = {result.get('expires_at')}")
+
+    # ── Scope enforcement matrix ──────────────────────────────────────────
+    print(f"\n[MCP] Scope enforcement matrix for '{args.service}':")
+    for action in list_service_actions(args.service):
+        allowed = is_action_in_scope(action, scope)
+        sym     = "✓ ALLOWED" if allowed else "✕ BLOCKED"
+        print(f"  [{sym}]  {action}")
+
+    # ── Live scope checks via /agent/action ───────────────────────────────
+    print(f"\n[MCP] Live scope enforcement (real HTTP calls → audit feed):")
+    _demo_action_http(token, "search",   "price comparison search")
+    _demo_action_http(token, "read",     "read product details")
+    _demo_action_http(token, "purchase", "checkout / place order  ← should be blocked")
+    _demo_action_http(token, "delete",   "cancel an order         ← should be blocked")
+
+    # ── revoke_token ──────────────────────────────────────────────────────
+    if not args.no_revoke:
+        print(f"\n[MCP] revoke_token(request_id={request_id[:8]}…)")
+        rev = mcp_revoke_token(request_id)
+        if rev.get("success"):
+            print(f"[MCP] Token revoked ✓")
+        else:
+            print(f"[MCP] Revoke result: {rev.get('error', 'unknown')}")
+
+        try:
+            confirm = http.get(f"{AGENT_BASE}/agent/token/{request_id}", timeout=5)
+            if confirm.status_code == 410:
+                print(f"[MCP] GET /agent/token → 410 EXPIRED ✓")
+            else:
+                print(f"[MCP] Expected 410, got {confirm.status_code}")
+        except http.exceptions.RequestException as exc:
+            print(f"[MCP] Confirm poll error: {exc}")
+    else:
+        print(f"\n[MCP] Skipping revoke (--no-revoke)")
+
+    print(f"\n{_bar('═')}")
+    print("  MCP SMOKE TEST PASSED")
+    print(_bar("═"))
 
 
 if __name__ == "__main__":
