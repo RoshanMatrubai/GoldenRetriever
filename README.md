@@ -66,7 +66,7 @@ The dashboard opens on the **Requests** screen. The full demo loop:
 3. Optionally click **✎ edit** to adjust the scope before approving
 4. Click **✓ Approve** — the card updates to Approved; navigate to **Active Sessions** to see the live token with pulsing dot and TTL countdown
 5. On the session card, click action buttons (e.g. "Search products" → allowed, "Add to cart" → denied) to test scope enforcement
-6. Click **End Session** — the token dies immediately and the session disappears
+6. Click **End Session** — the token is immediately killed and the session disappears
 7. Navigate to **Access History** to see the full audit trail: `SUBMITTED → SCOPE_DERIVED → APPROVED → TOKEN_ISSUED → SCOPE_DENIED → SESSION_ENDED`
 
 See [DEMO.md](DEMO.md) for the full script with talking points (~90 seconds).
