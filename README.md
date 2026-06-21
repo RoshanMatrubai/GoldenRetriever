@@ -27,7 +27,8 @@ npm --prefix ui install && npm --prefix ui run dev   # frontend dev server
 | 3 | Encrypted vault — SQLite + AES-256-GCM, multi-tenant, secrets masked on read | ✅ |
 | 4 | Policy engine — task→scope derivation, least-privilege, 5 service catalogs | ✅ |
 | 5 | Request queue — AccessRequest dataclass, state machine, background expiry, rate limiting | ✅ |
-| 6–16 | Agent API → Dashboard → UI → Tokens → Audit → OAuth → Demo | 🔜 |
+| 6 | Agent REST API — POST /request, GET/DELETE /token/<id>, GET /pubkey on :5002 | ✅ |
+| 7–16 | Dashboard → UI → Tokens → Audit → OAuth → Demo | 🔜 |
 
 ---
 

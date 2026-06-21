@@ -165,6 +165,22 @@ class RequestQueue:
             self._persist(req)
             return req
 
+    def revoke(self, request_id: str) -> AccessRequest:
+        """Cancel (PENDING→DENIED) or expire (APPROVED→EXPIRED) a request."""
+        with self._lock:
+            req = self._get_or_raise(request_id)
+            if req.state == RequestState.PENDING:
+                req.state = RequestState.DENIED
+            elif req.state == RequestState.APPROVED:
+                req.state = RequestState.EXPIRED
+            else:
+                raise InvalidTransition(
+                    f"Cannot revoke request in terminal state {req.state.value}"
+                )
+            req.resolved_at = datetime.datetime.now(datetime.UTC)
+            self._persist(req)
+            return req
+
     def expire_stale(self) -> list:
         """Expire all PENDING requests past their TTL. Returns list of expired IDs."""
         now = datetime.datetime.now(datetime.UTC)
