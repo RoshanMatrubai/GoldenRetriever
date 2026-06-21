@@ -28,7 +28,8 @@ npm --prefix ui install && npm --prefix ui run dev   # frontend dev server
 | 4 | Policy engine — task→scope derivation, least-privilege, 5 service catalogs | ✅ |
 | 5 | Request queue — AccessRequest dataclass, state machine, background expiry, rate limiting | ✅ |
 | 6 | Agent REST API — POST /request, GET/DELETE /token/<id>, GET /pubkey on :5002 | ✅ |
-| 7–16 | Dashboard → UI → Tokens → Audit → OAuth → Demo | 🔜 |
+| 7 | Dashboard backend — Flask+SocketIO, stable JSON API, real-time events | ✅ |
+| 8–16 | UI → Tokens → Audit → OAuth → Demo | 🔜 |
 
 ---
 
@@ -70,6 +71,29 @@ dashboard/         — Flask + SocketIO backend + routes
 audit/             — append-only audit log
 ui/                — frontend dashboard (swappable design shell)
 ```
+
+---
+
+## Dashboard API Contract (stable — UI binds to these)
+
+All routes on `:5001`. Agent API lives on `:5002`.
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/status` | Health + pending count |
+| GET | `/api/requests?state=PENDING` | Pending (or filtered) requests |
+| GET | `/api/requests/all?limit=100` | All requests, newest first |
+| POST | `/api/requests/<id>/approve` | Approve a pending request |
+| POST | `/api/requests/<id>/deny` | Deny a pending request |
+| DELETE | `/api/requests/<id>` | Revoke an approved/pending request |
+| GET | `/api/tenants` | List tenants |
+| GET | `/api/accounts?tenant_id=<id>` | List service accounts for a tenant |
+| GET | `/api/audit?limit=50` | Audit log (stub until Phase 13) |
+
+**SocketIO events (server → client):**
+- `request:new` — new pending request arrived `{"request": {...}}`
+- `request:resolved` — approved, denied, or expired `{"request": {...}}`
+- `token:revoked` — token explicitly revoked `{"request_id": "...", "state": "..."}`
 
 ---
 

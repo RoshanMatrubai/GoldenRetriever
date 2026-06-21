@@ -96,6 +96,7 @@ class RequestQueue:
         self._lock = threading.Lock()
         self._requests: dict[str, AccessRequest] = {}
         self._agent_timestamps: dict[str, list] = {}
+        self._event_hook = None  # set via set_event_hook(fn)
 
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
@@ -108,6 +109,10 @@ class RequestQueue:
             target=self._expiry_loop, daemon=True, name="gr-expiry"
         )
         self._expiry_thread.start()
+
+    def set_event_hook(self, fn) -> None:
+        """Register a callback fn(event: str, data: dict) for state-change events."""
+        self._event_hook = fn
 
     # --- Public API ---
 
@@ -129,7 +134,8 @@ class RequestQueue:
             )
             self._requests[req.id] = req
             self._persist(req)
-            return req
+        self._fire("request:new", {"request": req.to_dict()})
+        return req
 
     def approve(self, request_id: str) -> AccessRequest:
         """Transition PENDING → APPROVED."""
@@ -140,7 +146,8 @@ class RequestQueue:
             req.state = RequestState.APPROVED
             req.resolved_at = datetime.datetime.now(datetime.UTC)
             self._persist(req)
-            return req
+        self._fire("request:resolved", {"request": req.to_dict()})
+        return req
 
     def deny(self, request_id: str) -> AccessRequest:
         """Transition PENDING → DENIED."""
@@ -151,7 +158,8 @@ class RequestQueue:
             req.state = RequestState.DENIED
             req.resolved_at = datetime.datetime.now(datetime.UTC)
             self._persist(req)
-            return req
+        self._fire("request:resolved", {"request": req.to_dict()})
+        return req
 
     def attach_token(self, request_id: str, token_id: str) -> AccessRequest:
         """Record the issued token ID on an APPROVED request."""
@@ -179,20 +187,23 @@ class RequestQueue:
                 )
             req.resolved_at = datetime.datetime.now(datetime.UTC)
             self._persist(req)
-            return req
+        self._fire("token:revoked", {"request_id": req.id, "state": req.state.value})
+        return req
 
     def expire_stale(self) -> list:
         """Expire all PENDING requests past their TTL. Returns list of expired IDs."""
         now = datetime.datetime.now(datetime.UTC)
-        expired_ids = []
+        expired = []
         with self._lock:
             for req in list(self._requests.values()):
                 if req.state == RequestState.PENDING and now >= req.expires_at:
                     req.state = RequestState.EXPIRED
                     req.resolved_at = now
                     self._persist(req)
-                    expired_ids.append(req.id)
-        return expired_ids
+                    expired.append(req)
+        for req in expired:
+            self._fire("request:resolved", {"request": req.to_dict()})
+        return [r.id for r in expired]
 
     def get(self, request_id: str) -> Optional[AccessRequest]:
         """Fetch by ID — checks memory first, then SQLite."""
@@ -223,6 +234,13 @@ class RequestQueue:
         self._conn.close()
 
     # --- Internals ---
+
+    def _fire(self, event: str, data: dict) -> None:
+        if self._event_hook is not None:
+            try:
+                self._event_hook(event, data)
+            except Exception as exc:
+                print(f"[queue] event hook error ({event}): {exc}", flush=True)
 
     def _init_schema(self):
         self._conn.execute("""

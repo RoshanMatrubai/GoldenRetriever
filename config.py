@@ -38,5 +38,8 @@ OAUTH_SERVICES = {
 # Headless-login site adapters (stub — populated in Phase 14)
 SERVICE_ADAPTERS: dict = {}
 
+# Vault master password — used to derive the AES-256-GCM vault key (MOCK for dev)
+VAULT_MASTER_PASSWORD = "gr-dev-master-password"  # MOCK — replace before any real deployment
+
 # Build-completion ping key (Claude Code only — not a product feature)
 BARK_KEY = os.environ.get("BARK_KEY", "Ty6uAVeqkSq5D2u35yMotQ")
