@@ -1,5 +1,7 @@
 # Runtime secrets — never commit
 vault.db
+vault.db-shm
+vault.db-wal
 .gr_identity.key
 .gr_identity.key.pub
 *.key

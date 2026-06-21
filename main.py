@@ -1,4 +1,5 @@
 import argparse
+import sqlite3
 import threading
 
 from werkzeug.serving import make_server
@@ -10,7 +11,7 @@ def _open_vault():
     from core.vault import Vault, VaultError
     try:
         return Vault.unlock(config.DB_PATH, config.VAULT_MASTER_PASSWORD)
-    except VaultError:
+    except (VaultError, sqlite3.OperationalError):
         print("[vault] no existing vault found — creating new vault…", flush=True)
         return Vault.create(config.DB_PATH, config.VAULT_MASTER_PASSWORD)
 

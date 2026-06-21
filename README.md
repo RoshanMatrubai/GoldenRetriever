@@ -29,7 +29,8 @@ npm --prefix ui install && npm --prefix ui run dev   # frontend dev server
 | 5 | Request queue — AccessRequest dataclass, state machine, background expiry, rate limiting | ✅ |
 | 6 | Agent REST API — POST /request, GET/DELETE /token/<id>, GET /pubkey on :5002 | ✅ |
 | 7 | Dashboard backend — Flask+SocketIO, stable JSON API, real-time events | ✅ |
-| 8–16 | UI → Tokens → Audit → OAuth → Demo | 🔜 |
+| 8 | Polished dashboard UI — approval cards, scope badges, accounts, audit feed, live SocketIO | ✅ |
+| 9–16 | Tokens → Audit → OAuth → Demo | 🔜 |
 
 ---
 
