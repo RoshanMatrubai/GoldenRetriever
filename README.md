@@ -1,8 +1,8 @@
-# 🐕 GoldenRetriever · Scoped Access Broker for Agentic AI
+# 🐕 Doberman · Scoped Access Broker for Agentic AI
 
 > Companies don't hand their AI agents passwords. They hand them a scoped, expiring JWT — exactly the permissions the task needs, gone the moment the session ends.
 
-GoldenRetriever sits between your AI agents and the third-party accounts they need (Amazon, Google, GitHub, Slack, etc.). When an agent needs access, it submits a request describing its task. GoldenRetriever's policy engine derives the **minimum permission set** that task requires, an admin approves it in the dashboard, and the agent receives a short-lived Ed25519-signed JWT. The token carries only what the task needs — nothing more — and dies automatically when the session ends.
+Doberman sits between your AI agents and the third-party accounts they need (Amazon, Google, GitHub, Slack, etc.). When an agent needs access, it submits a request describing its task. Doberman's policy engine derives the **minimum permission set** that task requires, an admin approves it in the dashboard, and the agent receives a short-lived Ed25519-signed JWT. The token carries only what the task needs — nothing more — and dies automatically when the session ends.
 
 Every grant is scoped, logged, and one-click revocable.
 
@@ -10,12 +10,13 @@ Every grant is scoped, logged, and one-click revocable.
 
 ## What It Looks Like
 
-The dashboard is a live bento-grid admin panel:
+The dashboard is a polished sidebar app:
 
-- **Pending Approvals** — incoming agent requests, each showing the task description and the derived permission scope (e.g. `search read` but never `purchase`)
-- **Active Sessions** — live tokens with TTL countdowns and green pulse indicators; one-click End Session
-- **Audit Log** — append-only event stream: `SUBMITTED → SCOPE_DERIVED → APPROVED → TOKEN_ISSUED → SCOPE_DENIED → SESSION_ENDED`
-- **Connected Accounts** — service accounts configured in the encrypted vault
+- **Requests** — live feed of pending and resolved requests. Each pending card shows the derived scope with an inline **✎ edit** scope editor. Service dropdown + "Simulate request" fires a real demo request to the backend. Approve/Deny buttons with scope override support.
+- **Active Sessions** — live tokens with pulsing green indicators and TTL countdowns. Per-session **"Try an action"** buttons fire real scope-enforcement checks (in-scope → ✓ green, out-of-scope → ✕ red). One-click **End Session**.
+- **Audit Log** — full append-only event stream with event-type and agent filters; live updates via SocketIO (`SUBMITTED → SCOPE_DERIVED → APPROVED → TOKEN_ISSUED → SCOPE_DENIED → SESSION_ENDED`).
+- **Connected Accounts** — service accounts from the encrypted vault with masked credentials.
+- **Agent Overview** — agents derived from live request history with request counts, approval rates, and site access.
 
 ---
 
@@ -31,7 +32,7 @@ The dashboard is a live bento-grid admin panel:
 
 ```bash
 git clone <repo-url>
-cd GoldenRetriever
+cd Doberman
 
 # Python dependencies
 pip install -r requirements.txt
@@ -52,19 +53,21 @@ That's it. The script:
 3. Starts the Vite dev server (React UI) on `:5173`
 4. Waits for both to be healthy, then opens **http://localhost:5173** in your browser
 
-You should see the GoldenRetriever dashboard with a green **Live** dot in the header and five service accounts in the Connected Accounts strip at the bottom.
+You should see the Doberman dashboard with a green **Live** indicator in the sidebar footer and the **Requests** screen open by default.
 
 Press `Ctrl+C` to stop everything cleanly.
 
 ### 3. Run the demo
 
-With the dashboard open, click **▶ Simulate Request** in the header bar. This triggers a full approval loop:
+The dashboard opens on the **Requests** screen. The full demo loop:
 
-1. A pending card appears showing a price-comparison task for Amazon with derived scope `search read` (no `purchase`)
-2. Click **✓ Approve** — the card slides out, an active session appears with a pulsing green dot and TTL countdown
-3. Click **✓ In-Scope** — the audit log shows `ACTION_ALLOWED`
-4. Click **✕ Blocked** — the audit log shows `SCOPE_DENIED · purchase not in scope`
-5. Click **End Session** on the session card — the token dies immediately; subsequent agent calls return 410
+1. Select a service (Amazon, Google, GitHub, Slack, Jira) from the dropdown and click **Simulate request**
+2. A pending card appears showing the derived scope (e.g. `search read` — no `purchase`)
+3. Optionally click **✎ edit** to adjust the scope before approving
+4. Click **✓ Approve** — the card updates to Approved; navigate to **Active Sessions** to see the live token with pulsing dot and TTL countdown
+5. On the session card, click action buttons (e.g. "Search products" → allowed, "Add to cart" → denied) to test scope enforcement
+6. Click **End Session** — the token dies immediately and the session disappears
+7. Navigate to **Access History** to see the full audit trail: `SUBMITTED → SCOPE_DERIVED → APPROVED → TOKEN_ISSUED → SCOPE_DENIED → SESSION_ENDED`
 
 See [DEMO.md](DEMO.md) for the full script with talking points (~90 seconds).
 
@@ -88,13 +91,13 @@ Then open **http://localhost:5173**.
 
 ## Claude Code Integration (MCP)
 
-GoldenRetriever has a first-class Claude Code integration. Claude Code acts as the AI agent — it calls `request_access` via MCP, the approval card appears live in the dashboard, and once you approve it Claude continues its task with a scoped token.
+Doberman has a first-class Claude Code integration. Claude Code acts as the AI agent — it calls `request_access` via MCP, the approval card appears live in the dashboard, and once you approve it Claude continues its task with a scoped token.
 
 ### Setup
 
 ```bash
 # 1. Register the MCP server with Claude Code (run in a plain terminal, not inside Claude Code)
-claude mcp add golden-retriever -- python3 /path/to/GoldenRetriever/main.py --mcp
+claude mcp add doberman -- python3 /path/to/Doberman/main.py --mcp
 
 # 2. Verify it registered
 claude mcp list
@@ -105,7 +108,7 @@ python main.py
 
 Then start a new Claude Code session and ask it something like:
 
-> "Use GoldenRetriever to get Amazon access, then compare prices for the M4 MacBook Pro, M4 MacBook Air, and Dell XPS 15."
+> "Use Doberman to get Amazon access, then compare prices for the M4 MacBook Pro, M4 MacBook Air, and Dell XPS 15."
 
 Claude will call `request_access("amazon", "compare prices …")` → the pending card appears in your dashboard → you approve → Claude gets the scoped JWT and continues.
 
@@ -126,9 +129,9 @@ All tools return structured dicts and never raise, so Claude always gets a reada
 ## Python SDK
 
 ```python
-from agent.sdk import GoldenRetrieverClient, ApprovalDenied, ApprovalExpired, ApprovalTimeout, ScopeViolation
+from agent.sdk import DobermanClient, ApprovalDenied, ApprovalExpired, ApprovalTimeout, ScopeViolation
 
-client = GoldenRetrieverClient(
+client = DobermanClient(
     base_url="http://localhost:5002",
     tenant_id="demo",
     agent_id="my-agent",
@@ -168,7 +171,7 @@ python simulate_agent.py --mode mcp   # MCP (simulates Claude Code behavior)
 ### Request lifecycle
 
 ```
-Agent                    GoldenRetriever             Admin
+Agent                    Doberman             Admin
   │                            │                       │
   ├─ POST /agent/request ──────►                       │
   │   service="amazon"         │                       │
@@ -301,7 +304,7 @@ All dashboard routes on `:5001`. Agent API on `:5002`.
 | 8 | Dashboard UI — approval cards, scope badges, accounts strip, audit feed | ✅ |
 | 9 | Token issuance — Ed25519 JWT, AES-GCM hint, verify/revoke, wired to approve | ✅ |
 | 10 | Full approval loop — approve→scope→JWT→live UI update→agent poll→revoke | ✅ |
-| 11 | Python SDK — `GoldenRetrieverClient` with `request_access`, `verify_token`, `get_session` | ✅ |
+| 11 | Python SDK — `DobermanClient` with `request_access`, `verify_token`, `get_session` | ✅ |
 | 12 | MCP server — FastMCP stdio, `request_access` / `list_available_services` / `revoke_token` | ✅ |
 | 13 | Audit log — append-only table, all lifecycle events, live UI feed | ✅ |
 | 14 | OAuth + headless auth — Google/GitHub OAuth, Playwright session login, per-service adapters | ✅ |

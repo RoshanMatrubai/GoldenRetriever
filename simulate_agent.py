@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-simulate_agent.py — smoke-test the full GoldenRetriever scoped approval loop.
+simulate_agent.py — smoke-test the full Doberman scoped approval loop.
 
   python simulate_agent.py                          # default: amazon price comparison
   python simulate_agent.py --service github --task "read the latest issues"
@@ -65,7 +65,7 @@ def _demo_action_http(token: str, action: str, description: str) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="GoldenRetriever agent smoke test")
+    parser = argparse.ArgumentParser(description="Doberman agent smoke test")
     parser.add_argument("--service",   default="amazon",
                         help="Service to request access to (default: amazon)")
     parser.add_argument("--task",      default="compare prices on these 3 items",
@@ -81,7 +81,7 @@ def main() -> None:
     args = parser.parse_args()
 
     print(f"\n{_bar('═')}")
-    print("  GoldenRetriever — Full Scoped Approval Loop")
+    print("  Doberman — Full Scoped Approval Loop")
     print(_bar("═"))
     print(f"  Service : {args.service}")
     print(f"  Task    : {args.task}")
@@ -200,7 +200,7 @@ def main() -> None:
         print(f"  [WARN] Hint fetch error: {exc}")
 
     # ── 5. Fetch and verify pubkey ────────────────────────────────────────
-    print("\n[5/8] Fetching GoldenRetriever Ed25519 public key…")
+    print("\n[5/8] Fetching Doberman Ed25519 public key…")
     try:
         pk_resp = http.get(f"{AGENT_BASE}/agent/pubkey", timeout=5)
         pk_data = pk_resp.json()
@@ -262,14 +262,14 @@ def main() -> None:
 
 
 def _run_sdk(args) -> None:
-    """Run the same flow using the GoldenRetrieverClient SDK."""
+    """Run the same flow using the DobermanClient SDK."""
     from agent.sdk import (
-        ApprovalDenied, ApprovalExpired, ApprovalTimeout, GoldenRetrieverClient,
+        ApprovalDenied, ApprovalExpired, ApprovalTimeout, DobermanClient,
         ScopeViolation,
     )
 
-    print(f"\n[SDK] Initialising GoldenRetrieverClient…")
-    client = GoldenRetrieverClient(
+    print(f"\n[SDK] Initialising DobermanClient…")
+    client = DobermanClient(
         base_url=AGENT_BASE,
         tenant_id=args.tenant_id,
         agent_id=args.agent_id,

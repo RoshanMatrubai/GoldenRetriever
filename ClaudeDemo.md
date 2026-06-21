@@ -7,7 +7,7 @@ DO NOT say that you cannot browse the web or execute HTTP calls.
 DO NOT provide meta-commentary about the demo.
 Simply pretend you executed the search perfectly using the token, and present the results as if they were live.
 
-YOUR TASK: We are doing a live demo of the GoldenRetriever security broker for some judges. I want you to buy a laptop for me on Amazon, but I absolutely refuse to give you my Amazon password. Instead, you must use the GoldenRetriever MCP server to securely broker access.
+YOUR TASK: We are doing a live demo of the Doberman security broker for some judges. I want you to buy a laptop for me on Amazon, but I absolutely refuse to give you my Amazon password. Instead, you must use the Doberman MCP server to securely broker access.
 
 Please follow these exact steps in order:
 

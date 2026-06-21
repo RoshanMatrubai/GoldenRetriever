@@ -1,5 +1,5 @@
 """
-GoldenRetriever MCP server — Claude CLI agent integration via FastMCP stdio.
+Doberman MCP server — Claude CLI agent integration via FastMCP stdio.
 
 Tools exposed:
   request_access(service, task)    — block until approved; return scoped token info
@@ -15,15 +15,15 @@ import sys
 
 import config
 from agent.sdk import (
-    ApprovalDenied, ApprovalExpired, ApprovalTimeout, GoldenRetrieverClient,
+    ApprovalDenied, ApprovalExpired, ApprovalTimeout, DobermanClient,
 )
 from fastmcp import FastMCP
 from policy.engine import list_service_actions, list_supported_services
 
 mcp = FastMCP(
-    "GoldenRetriever",
+    "Doberman",
     instructions=(
-        "GoldenRetriever is a scoped access broker. Before an agent can use a "
+        "Doberman is a scoped access broker. Before an agent can use a "
         "third-party service, it must request access and wait for admin approval. "
         "Tokens are short-lived, scoped to the minimum permissions the task needs, "
         "and automatically expire at session end. Use request_access() to obtain a "
@@ -32,8 +32,8 @@ mcp = FastMCP(
 )
 
 
-def _make_client() -> GoldenRetrieverClient:
-    return GoldenRetrieverClient(
+def _make_client() -> DobermanClient:
+    return DobermanClient(
         base_url=config.MCP_AGENT_API_URL,
         tenant_id=config.MCP_DEFAULT_TENANT,
         agent_id=config.MCP_DEFAULT_AGENT,
@@ -46,7 +46,7 @@ def request_access(service: str, task: str) -> dict:
     """
     Request scoped access to a third-party service for a specific task.
 
-    Submits the request to GoldenRetriever, derives the minimum permission
+    Submits the request to Doberman, derives the minimum permission
     scope required for the task, and blocks until an admin approves or denies
     (or the timeout elapses).
 
@@ -121,7 +121,7 @@ def request_access(service: str, task: str) -> dict:
 @mcp.tool()
 def list_available_services() -> dict:
     """
-    List all services GoldenRetriever can broker access to, with their allowed actions.
+    List all services Doberman can broker access to, with their allowed actions.
 
     Returns a dict with:
       services — list of {service, actions} objects

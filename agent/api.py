@@ -4,7 +4,7 @@ Agent-facing REST API — Blueprint mounted at /agent.
 POST   /agent/request          submit a new scoped access request
 GET    /agent/token/<id>       poll status (202 pending · 200 approved · 403 denied · 410 expired)
 DELETE /agent/token/<id>       cancel (PENDING) or revoke (APPROVED)
-GET    /agent/pubkey           GoldenRetriever's Ed25519 public key (base64)
+GET    /agent/pubkey           Doberman's Ed25519 public key (base64)
 GET    /agent/hint/<id>        one-time credential hint fetch (410 if already consumed)
 POST   /agent/action           scope enforcement check — returns 200/403 + logs SCOPE_DENIED
 """
@@ -126,7 +126,7 @@ def revoke_token(request_id: str):
 
 @agent_bp.get("/pubkey")
 def get_pubkey():
-    """Return the GoldenRetriever Ed25519 public key agents use to verify tokens."""
+    """Return the Doberman Ed25519 public key agents use to verify tokens."""
     try:
         pub = get_public_key_bytes()
     except Exception as exc:

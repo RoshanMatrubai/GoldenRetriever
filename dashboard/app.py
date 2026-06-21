@@ -394,7 +394,7 @@ def create_dashboard_app(queue: RequestQueue, vault: Vault) -> tuple[Flask, Sock
 
     @app.get("/")
     def root():
-        return jsonify({"service": "GoldenRetriever", "version": "0.15.0", "status": "ok"})
+        return jsonify({"service": "Doberman", "version": "0.15.0", "status": "ok"})
 
     return app, sio
 

@@ -15,7 +15,7 @@ def _fast_vault_create(path: str, password: str = "test-master-pw") -> Vault:
     from core.crypto import aes_gcm_encrypt
     key, salt = argon2id_hash(password, m=_FAST_M)
     v = Vault(path, key)
-    sentinel = b"GoldenRetriever-vault-v1"
+    sentinel = b"Doberman-vault-v1"
     v._conn.execute("INSERT OR REPLACE INTO vault_meta VALUES (?, ?)", ("argon2_salt", salt))
     v._conn.execute("INSERT OR REPLACE INTO vault_meta VALUES (?, ?)", ("check_blob", aes_gcm_encrypt(key, sentinel)))
     v._conn.commit()
@@ -33,7 +33,7 @@ def _fast_vault_unlock(path: str, password: str = "test-master-pw") -> Vault:
     from core.crypto import aes_gcm_decrypt
     key, _ = argon2id_hash(password, bytes(salt_row["v"]), m=_FAST_M)
     plaintext = aes_gcm_decrypt(key, bytes(check_row["v"]))
-    assert plaintext == b"GoldenRetriever-vault-v1"
+    assert plaintext == b"Doberman-vault-v1"
     return Vault(path, key)
 
 

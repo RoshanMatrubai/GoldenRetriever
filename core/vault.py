@@ -4,7 +4,7 @@ import sqlite3
 
 from core.crypto import aes_gcm_decrypt, aes_gcm_encrypt, argon2id_hash, random_id
 
-_SENTINEL = b"GoldenRetriever-vault-v1"
+_SENTINEL = b"Doberman-vault-v1"
 _MASK = "***"
 _SENSITIVE = {"password", "secret", "token", "cookie", "key", "access_token",
               "refresh_token", "client_secret"}
@@ -77,7 +77,7 @@ class Vault:
         try:
             salt_row = tmp.execute("SELECT v FROM vault_meta WHERE k='argon2_salt'").fetchone()
             if not salt_row:
-                raise VaultError("Not a GoldenRetriever vault database")
+                raise VaultError("Not a Doberman vault database")
             check_row = tmp.execute("SELECT v FROM vault_meta WHERE k='check_blob'").fetchone()
         finally:
             tmp.close()

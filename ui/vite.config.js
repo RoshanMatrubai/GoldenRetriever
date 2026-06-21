@@ -7,6 +7,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': 'http://localhost:5001',
+      '/auth': 'http://localhost:5001',
       '/socket.io': {
         target: 'http://localhost:5001',
         ws: true,

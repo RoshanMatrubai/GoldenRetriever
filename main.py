@@ -18,7 +18,7 @@ def _open_vault():
 
 def main():
     parser = argparse.ArgumentParser(
-        description="GoldenRetriever — Scoped Access Broker for Agentic AI"
+        description="Doberman — Scoped Access Broker for Agentic AI"
     )
     parser.add_argument("--mcp", action="store_true", help="Run as stdio MCP server")
     args = parser.parse_args()
@@ -27,12 +27,12 @@ def main():
         import os, sys
         script_path = os.path.abspath(__file__)
         # All startup output MUST go to stderr — stdout is the JSON-RPC channel
-        print("GoldenRetriever MCP server — stdio transport", file=sys.stderr, flush=True)
+        print("Doberman MCP server — stdio transport", file=sys.stderr, flush=True)
         print(f"  Connects to agent API at {config.MCP_AGENT_API_URL}", file=sys.stderr, flush=True)
         print(f"  Tenant: {config.MCP_DEFAULT_TENANT}  Agent: {config.MCP_DEFAULT_AGENT}", file=sys.stderr, flush=True)
         print("", file=sys.stderr, flush=True)
         print("Add to your Claude Code MCP config (~/.claude.json → mcpServers):", file=sys.stderr, flush=True)
-        print(f'  {{"golden-retriever": {{"type": "stdio", "command": "python3", "args": ["{script_path}", "--mcp"]}}}}', file=sys.stderr, flush=True)
+        print(f'  {{"doberman": {{"type": "stdio", "command": "python3", "args": ["{script_path}", "--mcp"]}}}}', file=sys.stderr, flush=True)
         print("", file=sys.stderr, flush=True)
         print("Starting…", file=sys.stderr, flush=True)
         from agent.mcp_server import run as mcp_run
@@ -59,7 +59,7 @@ def main():
     agent_thread.start()
 
     print(
-        f"GoldenRetriever — dashboard :{config.DASHBOARD_PORT}  "
+        f"Doberman — dashboard :{config.DASHBOARD_PORT}  "
         f"agent API :{config.AGENT_API_PORT}",
         flush=True,
     )

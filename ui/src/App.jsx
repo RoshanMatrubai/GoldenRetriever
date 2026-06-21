@@ -69,7 +69,7 @@ export default function App() {
         <div className="bento-header__brand">
           <span className="bento-header__logo">🐕</span>
           <div>
-            <span className="bento-header__name">GoldenRetriever</span>
+            <span className="bento-header__name">Doberman</span>
             <span className="bento-header__sub">Access Broker</span>
           </div>
         </div>

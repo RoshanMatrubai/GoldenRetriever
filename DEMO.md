@@ -1,4 +1,4 @@
-# GoldenRetriever — Demo Script
+# Doberman — Demo Script
 > One command, one browser tab, five clicks. ~90 seconds.
 
 ---
@@ -15,13 +15,13 @@ That's it. The script:
 - Starts the Vite dev server (React UI on :5173).
 - Opens **http://localhost:5173** in your browser automatically.
 
-You should see the GoldenRetriever bento dashboard, connection dot **green**, all four tiles visible.
+You should see the Doberman bento dashboard, connection dot **green**, all four tiles visible.
 
 ---
 
 ## The pitch (say this while pointing at the screen)
 
-> "Companies don't hand their AI agents passwords. GoldenRetriever gives each agent exactly the permissions one task needs — nothing more — as a short-lived signed token that expires the moment the job ends. Every grant is visible, logged, and one-click revocable."
+> "Companies don't hand their AI agents passwords. Doberman gives each agent exactly the permissions one task needs — nothing more — as a short-lived signed token that expires the moment the job ends. Every grant is visible, logged, and one-click revocable."
 
 ---
 

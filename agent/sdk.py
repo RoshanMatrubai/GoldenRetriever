@@ -1,8 +1,8 @@
 """
-GoldenRetrieverClient — Python SDK for agent-side integration.
+DobermanClient — Python SDK for agent-side integration.
 
 Usage:
-    client = GoldenRetrieverClient(
+    client = DobermanClient(
         base_url="http://localhost:5002",
         tenant_id="my-tenant",
         agent_id="my-agent",
@@ -39,9 +39,9 @@ class ScopeViolation(Exception):
     """Attempted action is outside the granted scope."""
 
 
-class GoldenRetrieverClient:
+class DobermanClient:
     """
-    SDK wrapping the GoldenRetriever agent REST API.
+    SDK wrapping the Doberman agent REST API.
 
     All network calls use `requests` with a per-call timeout of 10s.
     Public-key is fetched once from /agent/pubkey and cached for the

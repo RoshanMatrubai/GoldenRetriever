@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# GoldenRetriever — one-command startup
+# Doberman — one-command startup
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -13,7 +13,7 @@ kill_port 5173
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  🐕  GoldenRetriever — Scoped Access Broker"
+echo "  🐕  Doberman — Scoped Access Broker"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
@@ -60,7 +60,7 @@ open "http://localhost:5173" 2>/dev/null || true
 # ── Cleanup on exit ───────────────────────────────────────────────────────────
 cleanup() {
   echo ""
-  echo "  Stopping GoldenRetriever…"
+  echo "  Stopping Doberman…"
   kill "$BACKEND_PID" "$UI_PID" 2>/dev/null || true
   wait "$BACKEND_PID" "$UI_PID" 2>/dev/null || true
   echo "  Done."

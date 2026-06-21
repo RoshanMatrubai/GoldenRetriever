@@ -1,5 +1,5 @@
 """
-Tests for GoldenRetrieverClient SDK.
+Tests for DobermanClient SDK.
 
 HTTP calls are mocked with unittest.mock — no live server required.
 Crypto uses real Ed25519 keys so token verification is genuine.
@@ -17,7 +17,7 @@ from agent.sdk import (
     ApprovalDenied,
     ApprovalExpired,
     ApprovalTimeout,
-    GoldenRetrieverClient,
+    DobermanClient,
     ScopeViolation,
 )
 from core.crypto import encode_jwt, generate_ed25519_keypair, ed25519_public_to_bytes
@@ -36,7 +36,7 @@ def keypair():
 
 @pytest.fixture()
 def client():
-    return GoldenRetrieverClient(
+    return DobermanClient(
         base_url=BASE_URL,
         tenant_id="test-tenant",
         agent_id="test-agent",
@@ -259,7 +259,7 @@ class TestGetSession:
         priv, _ = keypair
         token = _make_token(priv, scope=["search", "read"])
 
-        c = GoldenRetrieverClient(BASE_URL, "t", "a")
+        c = DobermanClient(BASE_URL, "t", "a")
         session = c.get_session(token)
 
         assert session.headers["Authorization"] == f"Bearer {token}"
@@ -272,6 +272,6 @@ class TestGetSession:
         priv, _ = keypair
         token = _make_token(priv)
 
-        c = GoldenRetrieverClient(BASE_URL, "t", "a")
+        c = DobermanClient(BASE_URL, "t", "a")
         session = c.get_session(token)
         assert isinstance(session, req_lib.Session)
