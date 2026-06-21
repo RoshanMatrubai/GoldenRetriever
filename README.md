@@ -25,7 +25,8 @@ npm --prefix ui install && npm --prefix ui run dev   # frontend dev server
 | 1 | Scaffold — config, main, ui shell, package dirs | ✅ |
 | 2 | Crypto primitives — Argon2id, AES-256-GCM, Ed25519, EdDSA JWT | ✅ |
 | 3 | Encrypted vault — SQLite + AES-256-GCM, multi-tenant, secrets masked on read | ✅ |
-| 4–16 | Policy → Queue → APIs → UI → Tokens → Audit → OAuth → Demo | 🔜 |
+| 4 | Policy engine — task→scope derivation, least-privilege, 5 service catalogs | ✅ |
+| 5–16 | Queue → APIs → UI → Tokens → Audit → OAuth → Demo | 🔜 |
 
 ---
 
