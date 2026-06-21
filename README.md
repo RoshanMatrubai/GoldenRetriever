@@ -230,4 +230,4 @@ Act 6  Audit tab: SUBMITTED → SCOPE_DERIVED → APPROVED → TOKEN_ISSUED
 
 ## License
 
-MIT © 2026 Roshan Matrubai
+MIT © 2026 Roshan Matrubai, Daksh Sharma, and Samarth Nayar
