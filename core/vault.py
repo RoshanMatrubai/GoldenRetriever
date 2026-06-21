@@ -46,6 +46,15 @@ class Vault:
                 tenant_id TEXT NOT NULL,
                 revoked_at TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS cookie_cache (
+                id TEXT PRIMARY KEY,
+                service TEXT NOT NULL,
+                username TEXT NOT NULL,
+                cookies_blob BLOB NOT NULL,
+                cached_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                UNIQUE(service, username)
+            );
         """)
         self._conn.commit()
 
@@ -182,6 +191,39 @@ class Vault:
             (tenant_id,),
         ).fetchall()
         return [dict(r) for r in rows]
+
+    # --- Cookie cache (headless session reuse) ---
+
+    def set_cookie_cache(self, service: str, username: str, cookies: list) -> None:
+        """Encrypt and store cookies with a 6 h TTL (overwrite any existing entry)."""
+        import config
+        expires = (
+            datetime.datetime.now(datetime.UTC)
+            + datetime.timedelta(seconds=config.COOKIE_CACHE_TTL_SECONDS)
+        ).isoformat()
+        blob = aes_gcm_encrypt(self._key, json.dumps(cookies).encode())
+        self._conn.execute(
+            "INSERT OR REPLACE INTO cookie_cache"
+            " (id, service, username, cookies_blob, cached_at, expires_at)"
+            " VALUES (?, ?, ?, ?, ?, ?)",
+            (random_id(), service, username, blob, _now(), expires),
+        )
+        self._conn.commit()
+
+    def get_cookie_cache(self, service: str, username: str) -> list | None:
+        """Return decrypted cookies if the cache entry is still fresh; None otherwise."""
+        row = self._conn.execute(
+            "SELECT cookies_blob, expires_at FROM cookie_cache WHERE service=? AND username=?",
+            (service, username),
+        ).fetchone()
+        if not row:
+            return None
+        expires_at = datetime.datetime.fromisoformat(row["expires_at"])
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=datetime.UTC)
+        if datetime.datetime.now(datetime.UTC) > expires_at:
+            return None
+        return json.loads(aes_gcm_decrypt(self._key, bytes(row["cookies_blob"])))
 
 
 # --- helpers ---

@@ -35,7 +35,8 @@ npm --prefix ui install && npm --prefix ui run dev   # frontend dev server
 | 11 | Python SDK — `GoldenRetrieverClient`: `request_access`, `verify_token`, `revoke`, `get_session` | ✅ |
 | 12 | MCP server — FastMCP stdio, `request_access` / `list_available_services` / `revoke_token` | ✅ |
 | 13 | Audit log — append-only `audit_log` table, event constants, wired to all lifecycle points, live UI feed | ✅ |
-| 14–16 | OAuth → Session lifecycle → Demo polish | 🔜 |
+| 14 | OAuth + headless auth — Google/GitHub OAuth flow, Playwright session login, per-service adapters, hint wired into approve | ✅ |
+| 15–16 | Session lifecycle → Demo polish | 🔜 |
 
 ---
 
@@ -96,6 +97,8 @@ All tools return structured dicts — never raise — so the agent always gets a
 | Secret encryption | AES-256-GCM, random nonce per operation |
 | Token format | Ed25519-signed JWT (`EdDSA`) with AES-GCM encrypted credential hint |
 | Scope model | Per-request allow-list derived from agent task; embedded in signed claims |
+| Service auth | OAuth 2.0 code flow (Google/GitHub via `authlib`) or Playwright headless login |
+| Cookie cache | 6 h AES-GCM encrypted cookie cache for headless sessions |
 | MCP | `fastmcp` stdio server — first-class Claude Code integration |
 | Persistence | SQLite (`vault.db`) |
 
@@ -138,12 +141,14 @@ All routes on `:5001`. Agent API lives on `:5002`.
 | GET | `/api/status` | Health + pending count |
 | GET | `/api/requests?state=PENDING` | Pending (or filtered) requests |
 | GET | `/api/requests/all?limit=100` | All requests, newest first |
-| POST | `/api/requests/<id>/approve` | Approve → issues scoped JWT; returns `{request, message, token}` |
+| POST | `/api/requests/<id>/approve` | Approve → resolves credential hint → issues scoped JWT; returns `{request, message, token}` |
 | POST | `/api/requests/<id>/deny` | Deny a pending request |
 | DELETE | `/api/requests/<id>` | Revoke an approved/pending request |
 | GET | `/api/tenants` | List tenants |
 | GET | `/api/accounts?tenant_id=<id>` | List service accounts for a tenant |
 | GET | `/api/audit?limit=50&event=TOKEN_ISSUED&tenant_id=<id>` | Audit log, newest first; optional filters |
+| GET | `/auth/oauth/<service>/begin?tenant_id=<id>` | Start OAuth flow — redirects to provider consent screen |
+| GET | `/auth/callback` | OAuth callback — exchanges code, stores encrypted tokens in vault |
 
 **SocketIO events (server → client):**
 - `request:new` — new pending request arrived `{"request": {...}}`

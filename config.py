@@ -35,8 +35,15 @@ OAUTH_SERVICES = {
     },
 }
 
-# Headless-login site adapters (stub — populated in Phase 14)
-SERVICE_ADAPTERS: dict = {}
+# Encrypted cookie cache TTL for headless sessions (6 hours)
+COOKIE_CACHE_TTL_SECONDS = 21600
+
+# Adapter type per service name — drives auth/adapters/ dispatch
+SERVICE_ADAPTERS: dict = {
+    "google": "oauth",
+    "github": "oauth",
+    "amazon": "headless",
+}
 
 # Vault master password — used to derive the AES-256-GCM vault key (MOCK for dev)
 VAULT_MASTER_PASSWORD = "gr-dev-master-password"  # MOCK — replace before any real deployment

@@ -37,17 +37,20 @@ SocketIO events (server → all clients):
 """
 from __future__ import annotations
 
-from flask import Flask, jsonify, request as flask_request
+from flask import Flask, jsonify, redirect, request as flask_request
 from flask_socketio import SocketIO
 
 import audit.log as audit_log
+import auth.adapters as adapters
 from agent.queue import InvalidTransition, RequestNotFound, RequestQueue, RequestState
+from auth.oauth import OAuthError, begin_oauth, complete_oauth
 from core.tokens import issue_token
 from core.vault import Vault
 
 _queue: RequestQueue | None = None
 _vault: Vault | None = None
 _socketio: SocketIO | None = None
+_oauth_states: dict[str, dict] = {}  # state_token → {service, tenant_id}
 
 
 def create_dashboard_app(queue: RequestQueue, vault: Vault) -> tuple[Flask, SocketIO]:
@@ -111,7 +114,9 @@ def create_dashboard_app(queue: RequestQueue, vault: Vault) -> tuple[Flask, Sock
     def api_approve(request_id: str):
         try:
             req = _queue.approve(request_id)
-            token_str, token_id = issue_token(req, _vault.get_key())
+            # Resolve per-service credential hint (OAuth token or session cookies)
+            hint_data = adapters.resolve_hint(req.service, req.tenant_id, _vault)
+            token_str, token_id = issue_token(req, _vault.get_key(), hint_data=hint_data)
             _queue.attach_token(request_id, token_id, token_jwt=token_str)
             req = _queue.get(request_id)
             audit_log.log_event(
@@ -119,7 +124,11 @@ def create_dashboard_app(queue: RequestQueue, vault: Vault) -> tuple[Flask, Sock
                 tenant_id=req.tenant_id, agent_id=req.agent_id,
                 service=req.service, request_id=request_id,
                 scope=req.scope,
-                detail=f"token {token_id} issued (exp: {req.expires_at.isoformat() if req.expires_at else 'TTL'})",
+                detail=(
+                    f"token {token_id} issued "
+                    f"(hint_type={hint_data.get('type','?')}, "
+                    f"exp: {req.expires_at.isoformat() if req.expires_at else 'TTL'})"
+                ),
             )
         except RequestNotFound:
             return jsonify({"error": "not found"}), 404
@@ -181,6 +190,56 @@ def create_dashboard_app(queue: RequestQueue, vault: Vault) -> tuple[Flask, Sock
         tenant_id = flask_request.args.get("tenant_id") or None
         events = audit_log.get_recent(limit, event_filter=event_filter, tenant_id=tenant_id)
         return jsonify({"events": events})
+
+    # --- OAuth flows (admin initiates on behalf of tenant) ---
+
+    @app.get("/auth/oauth/<service>/begin")
+    def auth_oauth_begin(service: str):
+        """
+        Redirect the admin to the provider's consent screen.
+        Query param: tenant_id (required).
+
+        MOCK: placeholder client credentials in config.py — real redirect
+              only works once you fill in OAUTH_SERVICES client_id/secret.
+        """
+        tenant_id = flask_request.args.get("tenant_id")
+        if not tenant_id:
+            return jsonify({"error": "tenant_id is required"}), 400
+        try:
+            auth_url, state = begin_oauth(service)
+        except OAuthError as exc:
+            return jsonify({"error": str(exc)}), 400
+        _oauth_states[state] = {"service": service, "tenant_id": tenant_id}
+        return redirect(auth_url)
+
+    @app.get("/auth/callback")
+    def auth_oauth_callback():
+        """
+        Provider posts code + state here; we exchange for tokens and store in vault.
+        OAUTH_REDIRECT_URI in config.py must point to this route.
+        """
+        code = flask_request.args.get("code")
+        state = flask_request.args.get("state")
+        error = flask_request.args.get("error")
+        if error:
+            return jsonify({"error": f"Provider returned: {error}"}), 400
+        if not code or not state:
+            return jsonify({"error": "Missing code or state"}), 400
+        ctx = _oauth_states.pop(state, None)
+        if not ctx:
+            return jsonify({"error": "Unknown or expired state token"}), 400
+        service = ctx["service"]
+        tenant_id = ctx["tenant_id"]
+        try:
+            account_id = complete_oauth(service, code, state, tenant_id, _vault)
+        except OAuthError as exc:
+            print(f"[dashboard] OAuth callback error for {service}: {exc}", flush=True)
+            return jsonify({"error": str(exc)}), 500
+        return jsonify({
+            "message": f"{service} OAuth tokens stored",
+            "account_id": account_id,
+            "tenant_id": tenant_id,
+        })
 
     # --- Root ---
 
