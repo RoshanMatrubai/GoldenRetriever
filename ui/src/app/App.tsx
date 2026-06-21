@@ -8,6 +8,7 @@ import {
   Trash2, Copy, MoreHorizontal, Search,
 } from "lucide-react";
 import { io } from "socket.io-client";
+import OverviewScreen from "./OverviewScreen";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -47,7 +48,7 @@ type Account = {
   created_at: string;
 };
 
-type Screen = "requests" | "sessions" | "audit" | "accounts" | "agents" | "settings";
+type Screen = "overview" | "requests" | "sessions" | "audit" | "accounts" | "agents" | "settings";
 
 // ─── Socket ───────────────────────────────────────────────────────────────────
 
@@ -1064,6 +1065,7 @@ const SettingsScreen = () => {
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 
 const NAV: { id: Screen; label: string; icon: React.ElementType }[] = [
+  { id: "overview", label: "Overview",           icon: Shield  },
   { id: "requests", label: "Requests",           icon: Inbox   },
   { id: "sessions", label: "Active Sessions",    icon: Zap     },
   { id: "audit",    label: "Audit Log",          icon: Activity},
@@ -1153,7 +1155,7 @@ const Sidebar = ({ screen, setScreen, pendingCount, sessionCount, connected }: {
 // ─── App root ─────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [screen, setScreen]         = useState<Screen>("requests");
+  const [screen, setScreen]         = useState<Screen>("overview");
   const [connected, setConnected]   = useState(false);
   const [requests, setRequests]     = useState<BackendRequest[]>([]);
   const [sessions, setSessions]     = useState<BackendRequest[]>([]);
@@ -1253,6 +1255,7 @@ export default function App() {
 
   const renderScreen = () => {
     switch (screen) {
+      case "overview": return <OverviewScreen onNavigate={setScreen} />;
       case "requests": return <RequestsScreen requests={requests} onApprove={handleApprove} onDeny={handleDeny} pendingCount={pendingCount} />;
       case "sessions": return <SessionsScreen sessions={sessions} onEnded={handleSessionEnded} onGoToRequests={() => setScreen("requests")} />;
       case "audit":    return <AuditScreen events={auditEvents} />;
