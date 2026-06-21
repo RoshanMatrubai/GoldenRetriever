@@ -32,7 +32,34 @@ npm --prefix ui install && npm --prefix ui run dev   # frontend dev server
 | 8 | Polished dashboard UI — approval cards, scope badges, accounts, audit feed, live SocketIO | ✅ |
 | 9 | Token issuance — Ed25519 JWT, AES-GCM hint, verify/revoke/decrypt, wired to approve+revoke | ✅ |
 | 10 | Full approval loop — approve→scope→JWT→UI live update→agent poll→revoke; `simulate_agent.py` | ✅ |
-| 11–16 | SDK → MCP → Audit → OAuth → Session lifecycle → Demo polish | 🔜 |
+| 11 | Python SDK — `GoldenRetrieverClient`: `request_access`, `verify_token`, `revoke`, `get_session` | ✅ |
+| 12–16 | MCP → Audit → OAuth → Session lifecycle → Demo polish | 🔜 |
+
+---
+
+## Python SDK
+
+```python
+from agent.sdk import GoldenRetrieverClient, ApprovalDenied, ApprovalExpired, ApprovalTimeout
+
+client = GoldenRetrieverClient(
+    base_url="http://localhost:5002",
+    tenant_id="my-tenant",
+    agent_id="my-agent",
+)
+
+# Block until admin approves; raises ApprovalDenied / ApprovalExpired / ApprovalTimeout
+token, request_id = client.request_access("amazon", "compare prices on 3 items")
+
+# Verify signature + expiry using the server's Ed25519 public key (cached)
+claims = client.verify_token(token, required_scope=["search"])
+
+# Build an authenticated requests.Session (Bearer JWT header + X-GR-Scope)
+session = client.get_session(token)
+
+# Revoke when done
+client.revoke(request_id)
+```
 
 ---
 
