@@ -174,7 +174,9 @@ class RequestQueue:
             req.token_id = token_id
             req.token_jwt = token_jwt
             self._persist(req)
-            return req
+        # Fire a second resolved event so live UI clients see the token_id appear
+        self._fire("request:resolved", {"request": req.to_dict()})
+        return req
 
     def revoke(self, request_id: str) -> AccessRequest:
         """Cancel (PENDING→DENIED) or expire (APPROVED→EXPIRED) a request."""

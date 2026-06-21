@@ -181,6 +181,10 @@ def create_dashboard_app(queue: RequestQueue, vault: Vault) -> tuple[Flask, Sock
 def _emit_event(event: str, data: dict) -> None:
     if _socketio is not None:
         try:
-            _socketio.emit(event, data)
+            # Strip full JWT from socket broadcasts — agents fetch it via the polling API
+            safe = dict(data)
+            if "request" in safe and isinstance(safe["request"], dict):
+                safe["request"] = {k: v for k, v in safe["request"].items() if k != "token_jwt"}
+            _socketio.emit(event, safe)
         except Exception as exc:
             print(f"[dashboard] emit error ({event}): {exc}", flush=True)

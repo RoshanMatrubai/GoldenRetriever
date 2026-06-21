@@ -31,7 +31,8 @@ npm --prefix ui install && npm --prefix ui run dev   # frontend dev server
 | 7 | Dashboard backend — Flask+SocketIO, stable JSON API, real-time events | ✅ |
 | 8 | Polished dashboard UI — approval cards, scope badges, accounts, audit feed, live SocketIO | ✅ |
 | 9 | Token issuance — Ed25519 JWT, AES-GCM hint, verify/revoke/decrypt, wired to approve+revoke | ✅ |
-| 10–16 | Full loop → Audit → OAuth → Demo | 🔜 |
+| 10 | Full approval loop — approve→scope→JWT→UI live update→agent poll→revoke; `simulate_agent.py` | ✅ |
+| 11–16 | SDK → MCP → Audit → OAuth → Session lifecycle → Demo polish | 🔜 |
 
 ---
 
@@ -102,18 +103,16 @@ All routes on `:5001`. Agent API lives on `:5002`.
 ## Demo Arc (90 seconds)
 
 ```
-A: python main.py            # backend :5001/:5002
-B: npm --prefix ui run dev   # UI
-C: python main.py --mcp      # MCP server
+A: python main.py               # backend :5001/:5002
+B: npm --prefix ui run dev      # UI
+C: python simulate_agent.py     # agent smoke test (waits for admin to approve)
 
-Agent → request_access("Amazon", "compare prices on these 3 items")
-1. Pending card appears: derived scope = [search, read], NO purchase
-2. Admin clicks Approve
-3. Agent receives scoped JWT (exp: session end)
-4. Agent searches prices — in scope → 200 OK
-5. Agent attempts checkout — out of scope → blocked + shown in UI
-6. Session ends → token auto-expires
-7. Audit feed: SUBMITTED → SCOPE_DERIVED → APPROVED → TOKEN_ISSUED → SCOPE_DENIED → SESSION_ENDED
+1. simulate_agent.py submits Amazon "compare prices" request → scope=[search,read], NO purchase
+2. Pending card appears live in the UI
+3. Admin clicks Approve on the dashboard
+4. simulate_agent.py receives scoped JWT, prints claims + scope matrix
+5. In-scope: search → 200 OK  |  Out-of-scope: purchase → 403 BLOCKED
+6. Token revoked → subsequent poll → 410 EXPIRED
 ```
 
 ---
